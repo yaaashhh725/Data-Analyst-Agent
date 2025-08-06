@@ -5,3 +5,7 @@ matplotlib
 requests
 beautifulsoup4
 pillow
+google-genai
+dotenv
+subprocess.run
+fastparquet

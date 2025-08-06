@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from main_agent import task_breakdown
 import subprocess
 import os
 import sys
@@ -42,3 +43,20 @@ async def run_script():
         "returncode": result.returncode
     }
 
+@app.get("/task-breakdown")
+async def task_breakdown_endpoint():
+    """
+    Endpoint to break down a task based on the provided question.
+    """
+    question = """The undirected network in [`edges.csv`](./project-data-analyst-agent-sample-network/edges.csv) lists edges between five people.
+7. Plot the degree distribution as a bar chart with green bars. Encode as a base64 PNG under 100,000 bytes."""
+    try:
+        tasks = task_breakdown(question)
+        return tasks
+    except Exception as e:
+        return {"error": str(e)}
+
+# don't include this for vercel deployment
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, port=8000)

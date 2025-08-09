@@ -18,14 +18,18 @@ class TaskOrchestrator:
     """
     Manages the entire workflow from planning to execution and debugging.
     """
-    def __init__(self, plan_json_str: str):
-        self.plan = json.loads(plan_json_str)
+    def __init__(self, plan_data):
+        if isinstance(plan_data, str):
+            self.plan = json.loads(plan_data)
+        # If it's already a list/dict (Python object), use it directly
+        else:
+            self.plan = plan_data
         self.work_dir = "session_workspace"
         self.max_retries = 2 # 1 initial attempt + 2 retries
         
         # Clean up previous session if it exists
-        if os.path.exists(self.work_dir):
-            shutil.rmtree(self.work_dir)
+        # if os.path.exists(self.work_dir):
+        #     shutil.rmtree(self.work_dir)
         os.makedirs(self.work_dir, exist_ok=True)
         print(f"Workspace created at: {os.path.abspath(self.work_dir)}")
 
@@ -92,12 +96,14 @@ class TaskOrchestrator:
 
     def execute_workflow(self) -> dict:
         """Executes the entire plan, task by task."""
+        last_task_output = ""
         for task in self.plan:
             task_id = task.get("task_id")
             print(f"\n{'='*20} EXECUTING TASK {task_id} {'='*20}")
             print(f"Description: {task.get('description')}")
 
             current_code = ""
+            
             is_successful = False
 
             for attempt in range(self.max_retries + 1):
@@ -105,11 +111,11 @@ class TaskOrchestrator:
                 
                 # 1. Generate or Debug Code
                 if attempt == 0:
-                    llm_code = code_generator_agent.generate_code(task)
+                    llm_code = code_generator_agent.generate_code(task ,last_task_output)
                     current_code = self.extract_python_code(llm_code)
                 else:
                     # Pass the error to the debugger for a fix
-                    llm_code = debugger_agent.debug_code(task, current_code, last_error)
+                    llm_code = debugger_agent.debug_code(task,last_task_output, current_code, last_error)
                     current_code = self.extract_python_code(llm_code)
 
                 # 2. Check Dependencies
@@ -134,6 +140,9 @@ class TaskOrchestrator:
                 if result.returncode == 0:
                     print(f"--- Task {task_id} SUCCEEDED on attempt {attempt + 1}. ---")
                     print("Output:\n", result.stdout)
+
+                    last_task_output = last_task_output + f'{task_id} output: \n{result.stdout.strip()}'
+
                     is_successful = True
                     break
                 else:
@@ -159,40 +168,45 @@ class TaskOrchestrator:
             return {"status": "success", "reason": "Workflow finished but final_output.json was not found."}
 
 
-if __name__ == "__main__":
-    # This is the JSON plan produced by the "Planner" LLM.
-    # It describes the multi-step process to achieve the user's goal.
-    PLAN_JSON = """
-    [
-      {
-        "task_id": 1,
-        "description": "Create an initial dummy dataset of movies and ranks.",
-        "tool_needed": "python",
-        "dependencies": [],
-        "input_artifacts": [],
-        "output_artifacts": ["task_1_movies.parquet"]
-      },
-      {
-        "task_id": 2,
-        "description": "Load the movie data and calculate the average rank.",
-        "tool_needed": "python",
-        "dependencies": [1],
-        "input_artifacts": ["task_1_movies.parquet"],
-        "output_artifacts": ["task_2_average_rank.json"]
-      },
-      {
-        "task_id": 3,
-        "description": "Load all intermediate results and assemble the final output JSON.",
-        "tool_needed": "python",
-        "dependencies": [1, 2],
-        "input_artifacts": ["task_2_average_rank.json", "task_1_movies.parquet"],
-        "output_artifacts": ["final_output.json"]
-      }
-    ]
-    """
+    # destructor to delete the session_workspace folder
+    def __del__(self):
+        print(f"Cleaning up workspace: {self.work_dir}")
+        shutil.rmtree(self.work_dir, ignore_errors=True)
 
-    orchestrator = TaskOrchestrator(PLAN_JSON)
-    final_result = orchestrator.execute_workflow()
+# if __name__ == "__main__":
+#     # This is the JSON plan produced by the "Planner" LLM.
+#     # It describes the multi-step process to achieve the user's goal.
+#     PLAN_JSON = """
+#     [
+#       {
+#         "task_id": 1,
+#         "description": "Create an initial dummy dataset of movies and ranks.",
+#         "tool_needed": "python",
+#         "dependencies": [],
+#         "input_artifacts": [],
+#         "output_artifacts": ["task_1_movies.parquet"]
+#       },
+#       {
+#         "task_id": 2,
+#         "description": "Load the movie data and calculate the average rank.",
+#         "tool_needed": "python",
+#         "dependencies": [1],
+#         "input_artifacts": ["task_1_movies.parquet"],
+#         "output_artifacts": ["task_2_average_rank.json"]
+#       },
+#       {
+#         "task_id": 3,
+#         "description": "Load all intermediate results and assemble the final output JSON.",
+#         "tool_needed": "python",
+#         "dependencies": [1, 2],
+#         "input_artifacts": ["task_2_average_rank.json", "task_1_movies.parquet"],
+#         "output_artifacts": ["final_output.json"]
+#       }
+#     ]
+#     """
 
-    print("\n\n--- FINAL WORKFLOW RESULT ---")
-    print(json.dumps(final_result, indent=2))
+#     orchestrator = TaskOrchestrator(PLAN_JSON)
+#     final_result = orchestrator.execute_workflow()
+
+#     print("\n\n--- FINAL WORKFLOW RESULT ---")
+#     print(json.dumps(final_result, indent=2))

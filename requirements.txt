@@ -9,3 +9,4 @@ google-genai
 dotenv
 subprocess.run
 fastparquet
+python-multipart

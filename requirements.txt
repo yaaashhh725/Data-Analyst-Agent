@@ -10,3 +10,4 @@ dotenv
 subprocess.run
 fastparquet
 python-multipart
+uvicorn

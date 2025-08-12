@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from main_agent import task_breakdown
@@ -37,20 +37,19 @@ async def home():
 @app.post("/upload")
 async def upload_files(files: Optional[List[UploadFile]] = File(None)):
     if not files:
-        return 400, {"message": "No files provided"}
+        raise HTTPException(status_code=400, detail="No files provided")
 
     questions = None
 
     extra_files = []
 
     for file in files:
-        if file.filename == '':
+        if not file.filename :
             continue
             
         if file.filename == 'questions.txt':
             # read the questions.txt and call the main agent to make task plan
-            questions = await file.read()
-            questions = questions.decode()
+            questions = (await file.read()).decode()
             continue
 
         # Create directory if it doesn't exist
@@ -67,22 +66,32 @@ async def upload_files(files: Optional[List[UploadFile]] = File(None)):
     
     if not questions:
         # return 400 response that file not found
-        return 400, {
-            'message' : 'Questions.txt is either empty or does not exist'
-        }
+        raise HTTPException(status_code=400, detail="questions.txt is either empty or missing")
     
     # Process files here as needed
     questions = questions + f"Files provided with the questions.txt are: {''.join(extra_files)}"
     # call the main agent to create plan for the questions file.
-    task = task_breakdown(questions)
-    with open('tasks.json','w') as f:
-        f.write(task)
+    # task = task_breakdown(questions)
+    # # with open('tasks.json','w') as f:
+    # #     f.write(task)
     
-    orchestrator = TaskOrchestrator(task)
-    final_result = orchestrator.execute_workflow()
+    # orchestrator = TaskOrchestrator(task)
+    # final_result = orchestrator.execute_workflow()
     
-    return final_result
+    # return final_result
+    try:
+        task = task_breakdown(questions)
+    except Exception as e:
+        print(f"task_breakdown failed: {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="Planner failed. Check GEMINI_API_KEY and logs.")
 
+    try:
+        orchestrator = TaskOrchestrator(task)
+        final_result = orchestrator.execute_workflow()
+        return final_result
+    except Exception as e:
+        print(f"execute_workflow failed: {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="Internal server error during task execution")
     # print(final_result)
     # print(type(final_result))
 
@@ -134,9 +143,9 @@ Answer the following questions and respond with a JSON array of strings containi
     try:
         tasks = task_breakdown(question)
         # save the tasks into tasks.json
-        with open("tasks.json", "w") as f:
-            f.write(tasks)
-        return {"message": "Tasks saved successfully"}
+        # with open("tasks.json", "w") as f:
+        #     f.write(tasks)
+        return {"tasks": tasks}
     except Exception as e:
         return {"error": str(e)}
 

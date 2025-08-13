@@ -14,7 +14,7 @@ def debug_code(task: dict,last_task_output:str, failed_code: str, error_message:
         api_key=os.environ.get("GEMINI_API_KEY"),
     )
 
-    model = "gemini-2.0-flash"
+    model = "gemini-2.5-flash-lite"
     contents = [
         types.Content(
             role="user",

@@ -97,6 +97,7 @@ class TaskOrchestrator:
     def execute_workflow(self) -> dict:
         """Executes the entire plan, task by task."""
         last_task_output = ""
+        last_error = ""
         for task in self.plan:
             task_id = task.get("task_id")
             print(f"\n{'='*20} EXECUTING TASK {task_id} {'='*20}")
@@ -112,6 +113,10 @@ class TaskOrchestrator:
                 # 1. Generate or Debug Code
                 if attempt == 0:
                     llm_code = code_generator_agent.generate_code(task ,last_task_output)
+                    if llm_code == '' or llm_code is None:
+                        print("Code generation failed.")
+                        continue
+
                     current_code = self.extract_python_code(llm_code)
                 else:
                     # Pass the error to the debugger for a fix

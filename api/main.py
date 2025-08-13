@@ -88,6 +88,7 @@ async def upload_files(files: Optional[List[UploadFile]] = File(None)):
     try:
         orchestrator = TaskOrchestrator(task)
         final_result = orchestrator.execute_workflow()
+        orchestrator.__del__()
         return final_result
     except Exception as e:
         print(f"execute_workflow failed: {e}", file=sys.stderr)
@@ -152,4 +153,4 @@ Answer the following questions and respond with a JSON array of strings containi
 # don't include this for vercel deployment
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, port=8000)

@@ -25,7 +25,7 @@ class TaskOrchestrator:
         else:
             self.plan = plan_data
         self.work_dir = "session_workspace"
-        self.max_retries = 2 # 1 initial attempt + 2 retries
+        self.max_retries = 3 # 1 initial attempt + 3 retries
         
         # Clean up previous session if it exists
         # if os.path.exists(self.work_dir):

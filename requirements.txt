@@ -12,3 +12,5 @@ fastparquet
 python-multipart
 uvicorn
 pyarrow
+lxml
+html5lib

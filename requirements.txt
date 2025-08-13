@@ -11,3 +11,4 @@ subprocess.run
 fastparquet
 python-multipart
 uvicorn
+pyarrow

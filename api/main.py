@@ -153,4 +153,5 @@ Answer the following questions and respond with a JSON array of strings containi
 # don't include this for vercel deployment
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    #for render deployment 0.0.0.0 host

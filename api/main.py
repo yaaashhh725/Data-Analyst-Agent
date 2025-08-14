@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi.responses import JSONResponse
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from main_agent import task_breakdown
@@ -34,51 +35,99 @@ async def home():
 #         names.append(file.filename)
 
 #     return {'message': f'Uploaded {names} files successfully!'}
+# @app.post("/upload")
+# async def upload_files(files: Optional[List[UploadFile]] = File(None)):
+#     if not files:
+#         raise HTTPException(status_code=400, detail="No files provided")
+
+#     questions = None
+
+#     extra_files = []
+
+#     for file in files:
+#         if not file.filename :
+#             continue
+            
+#         if file.filename == 'questions.txt':
+#             # read the questions.txt and call the main agent to make task plan
+#             questions = (await file.read()).decode()
+#             continue
+
+#         # Create directory if it doesn't exist
+#         os.makedirs("session_workspace", exist_ok=True)
+        
+#         # Save file to disk
+#         file_path = f"session_workspace/{file.filename}"
+#         extra_files.append(file.filename)
+#         with open(file_path, "wb") as buffer:
+#             shutil.copyfileobj(file.file, buffer)
+        
+#         # Close the file to free up resources
+#         file.file.close()
+    
+#     if not questions:
+#         # return 400 response that file not found
+#         raise HTTPException(status_code=400, detail="questions.txt is either empty or missing")
+    
+#     # Process files here as needed
+#     questions = questions + f"Files provided with the questions.txt are: {''.join(extra_files)}"
+#     # call the main agent to create plan for the questions file.
+#     # task = task_breakdown(questions)
+#     # # with open('tasks.json','w') as f:
+#     # #     f.write(task)
+    
+#     # orchestrator = TaskOrchestrator(task)
+#     # final_result = orchestrator.execute_workflow()
+    
+#     # return final_result
+#     try:
+#         task = task_breakdown(questions)
+#     except Exception as e:
+#         print(f"task_breakdown failed: {e}", file=sys.stderr)
+#         raise HTTPException(status_code=500, detail="Planner failed. Check GEMINI_API_KEY and logs.")
+
+#     try:
+#         orchestrator = TaskOrchestrator(task)
+#         final_result = orchestrator.execute_workflow()
+#         orchestrator.__del__()
+#         return final_result
+#     except Exception as e:
+#         print(f"execute_workflow failed: {e}", file=sys.stderr)
+#         raise HTTPException(status_code=500, detail="Internal server error during task execution")
+#     # print(final_result)
+#     # print(type(final_result))
+
 @app.post("/upload")
-async def upload_files(files: Optional[List[UploadFile]] = File(None)):
-    if not files:
-        raise HTTPException(status_code=400, detail="No files provided")
+async def upload_files(request: Request):
+    form_data = await request.form()
+    files = form_data.multi_items()  # Get all form fields (including files)
 
     questions = None
-
     extra_files = []
 
-    for file in files:
-        if not file.filename :
-            continue
-            
-        if file.filename == 'questions.txt':
-            # read the questions.txt and call the main agent to make task plan
-            questions = (await file.read()).decode()
+    for field_name, uploaded_file in files:
+        
+        if field_name == "questions.txt":
+            # Read questions.txt
+            questions = (await uploaded_file.read()).decode()
             continue
 
-        # Create directory if it doesn't exist
+        # Save other files to disk
         os.makedirs("session_workspace", exist_ok=True)
-        
-        # Save file to disk
-        file_path = f"session_workspace/{file.filename}"
-        extra_files.append(file.filename)
+        file_path = f"session_workspace/{uploaded_file.filename}"
+        extra_files.append(uploaded_file.filename)
+
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Close the file to free up resources
-        file.file.close()
-    
+            shutil.copyfileobj(uploaded_file.file, buffer)
+
+        uploaded_file.file.close()
+
     if not questions:
-        # return 400 response that file not found
-        raise HTTPException(status_code=400, detail="questions.txt is either empty or missing")
-    
+        raise HTTPException(status_code=400, detail="questions.txt is missing or empty")
+
     # Process files here as needed
-    questions = questions + f"Files provided with the questions.txt are: {''.join(extra_files)}"
-    # call the main agent to create plan for the questions file.
-    # task = task_breakdown(questions)
-    # # with open('tasks.json','w') as f:
-    # #     f.write(task)
-    
-    # orchestrator = TaskOrchestrator(task)
-    # final_result = orchestrator.execute_workflow()
-    
-    # return final_result
+    questions = questions + f"\nFiles provided with the questions.txt are: {', '.join(extra_files)}"
+
     try:
         task = task_breakdown(questions)
     except Exception as e:
@@ -93,8 +142,7 @@ async def upload_files(files: Optional[List[UploadFile]] = File(None)):
     except Exception as e:
         print(f"execute_workflow failed: {e}", file=sys.stderr)
         raise HTTPException(status_code=500, detail="Internal server error during task execution")
-    # print(final_result)
-    # print(type(final_result))
+    
 
 @app.get("/debug")
 async def debug():

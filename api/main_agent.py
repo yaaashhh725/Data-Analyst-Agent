@@ -100,7 +100,9 @@ JSON
     
 - input_artifacts: List of filenames this task reads.
     
-- output_artifacts : List of filenames this task generates. The final output file for the user must be named final_output.json."""),
+- output_artifacts : List of filenames this task generates. The final output file for the user must be named final_output.json.
+
+- The final task must consider details given by the user. Such as maintaining certain structure in the output JSON, or type of the values in final_output.json"""),
         ],
     )
 

@@ -110,7 +110,7 @@ async def upload_files(request: Request):
         if field_name == "questions.txt":
             # Read questions.txt
             questions = (await uploaded_file.read()).decode()
-            continue
+            
 
         # Save other files to disk
         os.makedirs("session_workspace", exist_ok=True)
@@ -138,6 +138,7 @@ async def upload_files(request: Request):
         orchestrator = TaskOrchestrator(task)
         final_result = orchestrator.execute_workflow()
         orchestrator.__del__()
+        print(final_result)
         return final_result
     except Exception as e:
         print(f"execute_workflow failed: {e}", file=sys.stderr)

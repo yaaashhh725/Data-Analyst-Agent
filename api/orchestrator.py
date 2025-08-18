@@ -9,6 +9,7 @@ import re
 # Import our dummy agents
 import code_generator_agent
 import debugger_agent
+import vision_agent
 
 class DependencyError(Exception):
     """Custom exception for dependency issues."""
@@ -103,66 +104,102 @@ class TaskOrchestrator:
             print(f"\n{'='*20} EXECUTING TASK {task_id} {'='*20}")
             print(f"Description: {task.get('description')}")
 
-            current_code = ""
+            tool = task.get('tool_needed')
+            if tool not in ['python', 'vision']:
+                print(f"Unsupported tool: {tool}")
+                continue
             
-            is_successful = False
-
-            for attempt in range(self.max_retries + 1):
-                print(f"\n--- Attempt {attempt + 1} of {self.max_retries + 1} ---")
+            if tool.lower() == 'python':
+                current_code = ""
                 
-                # 1. Generate or Debug Code
-                if attempt == 0:
-                    llm_code = code_generator_agent.generate_code(task ,last_task_output)
-                    if llm_code == '' or llm_code is None:
-                        print("Code generation failed.")
-                        continue
+                is_successful = False
 
-                    current_code = self.extract_python_code(llm_code)
-                else:
-                    # Pass the error to the debugger for a fix
-                    llm_code = debugger_agent.debug_code(task,last_task_output, current_code, last_error)
-                    current_code = self.extract_python_code(llm_code)
+                for attempt in range(self.max_retries + 1):
+                    print(f"\n--- Attempt {attempt + 1} of {self.max_retries + 1} ---")
+                    
+                    # 1. Generate or Debug Code
+                    if attempt == 0:
+                        llm_code = code_generator_agent.generate_code(task ,last_task_output)
+                        if llm_code == '' or llm_code is None:
+                            print("Code generation failed.")
+                            continue
 
-                # 2. Check Dependencies
-                try:
-                    self._check_and_install_dependencies(current_code)
-                except DependencyError as e:
-                    print(f"FATAL ERROR: {e}")
-                    return {"status": "failed", "reason": str(e)}
+                        current_code = self.extract_python_code(llm_code)
+                    else:
+                        # Pass the error to the debugger for a fix
+                        llm_code = debugger_agent.debug_code(task,last_task_output, current_code, last_error)
+                        current_code = self.extract_python_code(llm_code)
 
-                # 3. Execute Code
-                script_path = os.path.join(os.path.abspath(self.work_dir), "script.py")
-                print(script_path,'-----------------------------------')
-                with open(script_path, "w") as f:
-                    f.write(current_code)
+                    # 2. Check Dependencies
+                    try:
+                        self._check_and_install_dependencies(current_code)
+                    except DependencyError as e:
+                        print(f"FATAL ERROR: {e}")
+                        return {"status": "failed", "reason": str(e)}
 
-                result = subprocess.run(
-                    [sys.executable, script_path],
-                    capture_output=True, text=True, cwd=self.work_dir
-                )
+                    # 3. Execute Code
+                    script_path = os.path.join(os.path.abspath(self.work_dir), "script.py")
+                    print(script_path,'-----------------------------------')
+                    with open(script_path, "w") as f:
+                        f.write(current_code)
 
-                # 4. Check Result
-                if result.returncode == 0:
-                    print(f"--- Task {task_id} SUCCEEDED on attempt {attempt + 1}. ---")
-                    print("Output:\n", result.stdout)
+                    result = subprocess.run(
+                        [sys.executable, script_path],
+                        capture_output=True, text=True, cwd=self.work_dir
+                    )
 
-                    last_task_output = last_task_output + f'{task_id} output: \n{result.stdout.strip()}'
+                    # 4. Check Result
+                    if result.returncode == 0:
+                        print(f"--- Task {task_id} SUCCEEDED on attempt {attempt + 1}. ---")
+                        print("Output:\n", result.stdout)
 
-                    is_successful = True
-                    break
-                else:
-                    print(f"--- Task {task_id} FAILED on attempt {attempt + 1}. ---")
-                    last_error = result.stderr
-                    print("Error:\n", last_error)
-            
-            if not is_successful:
-                print(f"\nFATAL: Task {task_id} failed after all retries. Aborting workflow.")
-                return {
-                    "status": "failed",
-                    "failed_task_id": task_id,
-                    "last_error": last_error
-                }
-        
+                        last_task_output = last_task_output + f'{task_id} output: \n{result.stdout.strip()}'
+
+                        is_successful = True
+                        break
+                    else:
+                        print(f"--- Task {task_id} FAILED on attempt {attempt + 1}. ---")
+                        last_error = result.stderr
+                        print("Error:\n", last_error)
+                
+                if not is_successful:
+                    print(f"\nFATAL: Task {task_id} failed after all retries. Aborting workflow.")
+                    return {
+                        "status": "failed",
+                        "failed_task_id": task_id,
+                        "last_error": last_error
+                    }
+
+            elif tool.lower() == 'vision':
+                is_successful = False
+
+                input_artifacts = task.get('input_artifacts', [])
+                input_artifacts = [os.path.join(self.work_dir, artifact) for artifact in input_artifacts]
+                output_filename = task.get('output_artifacts')[0]  # Get the first output artifact
+                task_description = task.get('description', 'Give a short description of the image and write all the text present in the image.')
+                for attempt in range(self.max_retries + 1):
+                    print(f"\n--- Attempt {attempt + 1} of {self.max_retries + 1} ---")
+
+                    vision_analysis = vision_agent.visual_analysis(input_artifacts, task_description)
+                    if vision_analysis==None or vision_analysis == '':
+                        print("Vision analysis failed. Try again")
+
+                    if vision_analysis:
+                        with open(os.path.join(self.work_dir, output_filename), "w") as f:
+                            f.write(vision_analysis)
+                        print(f"Vision analysis succeeded. Output written to {output_filename}")
+                        is_successful = True
+                        break
+
+                if not is_successful:
+                    print(f"\nFATAL: Task {task_id} failed after all retries. Aborting workflow.")
+                    return {
+                        "status": "failed",
+                        "failed_task_id": task_id,
+                        "last_error": last_error
+                    }
+
+
         # 5. Finalize
         print("\n{'='*20} WORKFLOW COMPLETED SUCCESSFULLY {'='*20}")
         final_output_path = os.path.join(self.work_dir, "final_output.json")

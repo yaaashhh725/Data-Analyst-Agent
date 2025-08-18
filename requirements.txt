@@ -14,3 +14,7 @@ uvicorn
 pyarrow
 lxml
 html5lib
+pdfplumber
+openpyxl
+xlrd #if the render goes above 500 mb, remove this one 
+duckdb

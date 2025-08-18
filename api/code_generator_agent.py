@@ -44,7 +44,7 @@ Your generated script will be executed in a new, isolated environment.
 
 # CONTEXT & ENVIRONMENT
 
-- Stateless Execution: The script will be run independently. It cannot access any variables or state from previously executed scripts. All necessary data must be loaded from the specified input\_artifacts.
+- Stateless Execution: The script will be run independently. It cannot access any variables or state from previously executed scripts. All necessary data must be loaded from the specified input_artifacts.
     
 - Context from Previous Task ("Peek"): You will often receive the direct print output (stdout) from the previously executed task. This "peek" gives you a glimpse into the actual data you are about to process (e.g., from df.head(), df.info(), or a printed variable). You **MUST** use this context to write more robust code For example:
     
@@ -58,7 +58,7 @@ Your generated script will be executed in a new, isolated environment.
 
 # CORE INSTRUCTIONS & BEST PRACTICES
 
-- Use Parquet, Not CSV: For all operations involving pandas DataFrames, you MUST use the Parquet file format for both reading (pd.read\_parquet()) and writing (df.to\_parquet()). Parquet is faster and preserves data types.
+- Use Parquet, Not CSV: For all operations involving pandas DataFrames, you MUST use the Parquet file format for both reading (pd.read_parquet()) and writing (df.to_parquet()). Parquet is faster and preserves data types.
     
 - Use DuckDB for SQL: If the task requires running SQL queries on files (like Parquet or CSV), you MUST use the duckdb Python library. Execute the query and fetch the results into a pandas DataFrame. For example: df = duckdb.sql('SELECT * FROM "path/to/file.parquet"').df().
     

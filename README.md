@@ -27,7 +27,9 @@ A modular, AI-powered workflow engine for automated data analysis, code generati
 - **File-based State:** All intermediate results are saved as artifacts for stateless execution.
 - **Extensible:** Easily add new agent types or tools.
 - **Minimalistic Frontend:** Upload files and interact with the workflow via a simple web UI.
-
+- **PDF & Document Parsing:** Extracts structured context from PDF or text attachments.
+- **Multi‑Format Ingestion:** Web pages (scraped via provided URL), CSV, Parquet, JSON, plain text, SQL result exports (as CSV/JSON), PDF, and images (PNG/JPG) as inputs.
+- **End-to-End Latency:** Typical small-to-medium workflows complete in under 3 minutes (plan → code → execute → debug → answer).
 ---
 
 ## Architecture
@@ -135,6 +137,26 @@ Answer the following questions and respond with a JSON array of strings containi
 
 - **`questions.txt` is mandatory.**
 - You may upload additional files (images, CSVs, etc.) as needed for your analysis.
+
+---
+
+### Supported Data Sources & File Types
+The agent can consume and produce:
+- Input (data collection / context):
+  - Web pages (by supplying URLs inside questions.txt)
+  - CSV (.csv)
+  - Parquet (.parquet)
+  - JSON (.json)
+  - Plain text (.txt)
+  - SQL query outputs exported as CSV or JSON
+  - PDF documents (.pdf)
+  - Images (.png, .jpg, .jpeg) for vision extraction
+- Intermediate artifacts:
+  - Parquet, CSV, JSON, image plots (as base64 data URIs), plain text logs
+- Final outputs:
+  - `final_output.json` plus any referenced generated artifacts (e.g., plot image data URIs)
+
+> Ensure large binary assets are minimized to stay within serverless limits.
 
 ---
 

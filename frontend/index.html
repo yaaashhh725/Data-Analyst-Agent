@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Data Analyst Agent - Upload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 2em auto; background: #fafafa; }
+    h1 { font-size: 1.5em; }
+    label { display: block; margin-top: 1em; }
+    input[type="file"] { margin-top: 0.5em; }
+    textarea { width: 100%; min-height: 120px; margin-top: 0.5em; }
+    button { margin-top: 1em; padding: 0.5em 1.5em; }
+    .example { background: #f3f3f3; padding: 1em; font-size: 0.95em; border-radius: 4px; margin-top: 0.5em; }
+    .result { margin-top: 2em; background: #e8ffe8; padding: 1em; border-radius: 4px; }
+    .error { margin-top: 2em; background: #ffe8e8; padding: 1em; border-radius: 4px; color: #a00; }
+  </style>
+</head>
+<body>
+  <h1>Upload Files for Data Analyst Agent</h1>
+  <form id="uploadForm">
+    <label>
+      <strong>questions.txt (required)</strong>
+      <span style="font-size:0.95em;">Paste your questions below or upload a file named <code>questions.txt</code>.</span>
+      <textarea id="questionsText" placeholder="Paste your questions here..."></textarea>
+      <div class="example">
+        <strong>Example structure for <code>questions.txt</code>:</strong>
+        <pre>
+Scrape the list of highest grossing films from Wikipedia. It is at the URL:
+https://en.wikipedia.org/wiki/List_of_highest-grossing_films
+
+Answer the following questions and respond with a JSON array of strings containing the answer.
+
+1. How many $2 bn movies were released before 2000?
+2. Which is the earliest film that grossed over $1.5 bn?
+3. What's the correlation between the Rank and Peak?
+4. Draw a scatterplot of Rank and Peak along with a dotted red regression line through it.
+   Return as a base-64 encoded data URI, `"data:image/png;base64,iVBORw0KG..."` under 100,000 bytes.
+        </pre>
+      </div>
+      <input type="file" id="questionsFile" accept=".txt">
+    </label>
+    <label>
+      <strong>Additional data files (optional)</strong>
+      <input type="file" id="extraFiles" multiple>
+    </label>
+    <button type="submit">Upload</button>
+  </form>
+  <div id="output"></div>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const output = document.getElementById('output');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      output.innerHTML = '';
+
+      const formData = new FormData();
+
+      // Handle questions.txt
+      const questionsFile = document.getElementById('questionsFile').files[0];
+      const questionsText = document.getElementById('questionsText').value.trim();
+
+      if (questionsFile) {
+        formData.append('questions.txt', questionsFile, 'questions.txt');
+      } else if (questionsText) {
+        // Create a Blob for questions.txt from textarea
+        const blob = new Blob([questionsText], { type: 'text/plain' });
+        formData.append('questions.txt', blob, 'questions.txt');
+      } else {
+        output.innerHTML = '<div class="error">questions.txt is required (either upload or paste).</div>';
+        return;
+      }
+
+      // Handle extra files
+      const extraFiles = document.getElementById('extraFiles').files;
+      for (let i = 0; i < extraFiles.length; i++) {
+        formData.append(extraFiles[i].name, extraFiles[i], extraFiles[i].name);
+      }
+
+      try {
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          output.innerHTML = `<div class="result"><strong>Result:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+        } else {
+          output.innerHTML = `<div class="error"><strong>Error:</strong> ${data.detail || JSON.stringify(data)}</div>`;
+        }
+      } catch (err) {
+        output.innerHTML =

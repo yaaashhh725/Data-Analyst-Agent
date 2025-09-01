@@ -1,32 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Data Analyst Agent - Upload</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 2em auto; background: #fafafa; }
-    h1 { font-size: 1.5em; }
-    label { display: block; margin-top: 1em; }
-    input[type="file"] { margin-top: 0.5em; }
-    textarea { width: 100%; min-height: 120px; margin-top: 0.5em; }
-    button { margin-top: 1em; padding: 0.5em 1.5em; }
-    .example { background: #f3f3f3; padding: 1em; font-size: 0.95em; border-radius: 4px; margin-top: 0.5em; }
-    .result { margin-top: 2em; background: #e8ffe8; padding: 1em; border-radius: 4px; }
-    .error { margin-top: 2em; background: #ffe8e8; padding: 1em; border-radius: 4px; color: #a00; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analyst Agent</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        textarea, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .info-text {
+            font-size: 0.9rem;
+            color: #555;
+            margin-top: -10px;
+            margin-bottom: 5px;
+        }
+        .results-container, .debug-container {
+            margin-top: 25px;
+        }
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loader {
+            text-align: center;
+            padding: 20px;
+            display: none; /* Hidden by default */
+        }
+        .debug-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Upload Files for Data Analyst Agent</h1>
-  <form id="uploadForm">
-    <label>
-      <strong>questions.txt (required)</strong>
-      <span style="font-size:0.95em;">Paste your questions below or upload a file named <code>questions.txt</code>.</span>
-      <textarea id="questionsText" placeholder="Paste your questions here..."></textarea>
-      <div class="example">
-        <strong>Example structure for <code>questions.txt</code>:</strong>
-        <pre>
-Scrape the list of highest grossing films from Wikipedia. It is at the URL:
+
+    <div class="container">
+        <h1>Data Analyst Agent </h1>
+        
+        <form id="upload-form">
+            <label for="questions"><strong>1. Enter Your Questions (Mandatory)</strong></label>
+            <textarea id="questions" name="questions" required placeholder="Scrape the list of highest grossing films from Wikipedia. It is at the URL:
 https://en.wikipedia.org/wiki/List_of_highest-grossing_films
 
 Answer the following questions and respond with a JSON array of strings containing the answer.
@@ -34,60 +105,120 @@ Answer the following questions and respond with a JSON array of strings containi
 1. How many $2 bn movies were released before 2000?
 2. Which is the earliest film that grossed over $1.5 bn?
 3. What's the correlation between the Rank and Peak?
-4. Draw a scatterplot of Rank and Peak along with a dotted red regression line through it.
-   Return as a base-64 encoded data URI, `"data:image/png;base64,iVBORw0KG..."` under 100,000 bytes.
-        </pre>
-      </div>
-      <input type="file" id="questionsFile" accept=".txt">
-    </label>
-    <label>
-      <strong>Additional data files (optional)</strong>
-      <input type="file" id="extraFiles" multiple>
-    </label>
-    <button type="submit">Upload</button>
-  </form>
-  <div id="output"></div>
-  <script>
-    const form = document.getElementById('uploadForm');
-    const output = document.getElementById('output');
+4. Draw a scatterplot of Rank and Peak along with a dotted red regression line through it. Return as a base-64 encoded data URI."></textarea>
+            
+            <label for="extra-files"><strong>2. Upload Data Files (Optional)</strong></label>
+             <p class="info-text">
+                You can upload optional data files that your questions refer to. <br>
+                Supported formats: CSV, JSON, YAML, SQL, Parquet, PDF, HTML, and images.
+            </p>
+            <input type="file" id="extra-files" name="extra_files" multiple>
+            
+            <button type="submit">Execute Task</button>
+        </form>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      output.innerHTML = '';
+        <div id="loader" class="loader">
+            <p>Processing... This may take a moment. Please wait. 🙏</p>
+        </div>
+        
+        <div class="results-container">
+            <h2>Result</h2>
+            <pre id="main-output">Awaiting submission...</pre>
+        </div>
 
-      const formData = new FormData();
+        <hr>
 
-      // Handle questions.txt
-      const questionsFile = document.getElementById('questionsFile').files[0];
-      const questionsText = document.getElementById('questionsText').value.trim();
+        <div class="debug-container">
+            <h2>Utility & Debug Endpoints</h2>
+            <div class="debug-buttons">
+                <button data-endpoint="/task-breakdown">Test Task Breakdown</button>
+                <button data-endpoint="/final-result">Get Last Final Result</button>
+                <button data-endpoint="/run-script">Run try.py</button>
+                <button data-endpoint="/debug">Get Debug Info</button>
+            </div>
+            <pre id="debug-output">Click a button to see its output.</pre>
+        </div>
+    </div>
 
-      if (questionsFile) {
-        formData.append('questions.txt', questionsFile, 'questions.txt');
-      } else if (questionsText) {
-        // Create a Blob for questions.txt from textarea
-        const blob = new Blob([questionsText], { type: 'text/plain' });
-        formData.append('questions.txt', blob, 'questions.txt');
-      } else {
-        output.innerHTML = '<div class="error">questions.txt is required (either upload or paste).</div>';
-        return;
-      }
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('upload-form');
+            const questionsTextarea = document.getElementById('questions');
+            const extraFilesInput = document.getElementById('extra-files');
+            const loader = document.getElementById('loader');
+            const mainOutput = document.getElementById('main-output');
+            const debugOutput = document.getElementById('debug-output');
+            const debugButtons = document.querySelector('.debug-buttons');
 
-      // Handle extra files
-      const extraFiles = document.getElementById('extraFiles').files;
-      for (let i = 0; i < extraFiles.length; i++) {
-        formData.append(extraFiles[i].name, extraFiles[i], extraFiles[i].name);
-      }
+            // Set the base URL for the API
+            const API_BASE_URL = 'http://localhost:8000';
 
-      try {
-        const res = await fetch('/upload', {
-          method: 'POST',
-          body: formData
+            // Handle the main form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                loader.style.display = 'block';
+                mainOutput.textContent = 'Processing...';
+
+                const formData = new FormData();
+
+                // 1. Create a File object from the textarea content for 'questions.txt'
+                const questionsContent = questionsTextarea.value;
+                const questionsBlob = new Blob([questionsContent], { type: 'text/plain' });
+                const questionsFile = new File([questionsBlob], 'questions.txt', { type: 'text/plain' });
+                formData.append('questions.txt', questionsFile);
+
+                // 2. Append any other files the user selected
+                for (const file of extraFilesInput.files) {
+                    formData.append(file.name, file);
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/upload`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
+                    }
+                    
+                    mainOutput.textContent = JSON.stringify(result, null, 2);
+
+                } catch (error) {
+                    mainOutput.textContent = `Error: ${error.message}`;
+                    console.error('Upload failed:', error);
+                } finally {
+                    loader.style.display = 'none';
+                }
+            });
+
+            // Generic handler for all debug buttons
+            debugButtons.addEventListener('click', async (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const endpoint = e.target.dataset.endpoint;
+                    debugOutput.textContent = `Fetching from ${endpoint}...`;
+
+                    try {
+                        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                           throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
+                        }
+
+                        debugOutput.textContent = JSON.stringify(result, null, 2);
+
+                    } catch (error) {
+                        debugOutput.textContent = `Error: ${error.message}`;
+                        console.error(`Failed to fetch from ${endpoint}:`, error);
+                    }
+                }
+            });
         });
-        const data = await res.json();
-        if (res.ok) {
-          output.innerHTML = `<div class="result"><strong>Result:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
-        } else {
-          output.innerHTML = `<div class="error"><strong>Error:</strong> ${data.detail || JSON.stringify(data)}</div>`;
-        }
-      } catch (err) {
-        output.innerHTML =
+    </script>
+
+</body>
+</html>

@@ -122,6 +122,9 @@ async def upload_files(request: Request):
 
         uploaded_file.file.close()
 
+    # remove the questions.txt from the extra_files list
+    extra_files = [f for f in extra_files if f != "questions.txt"]
+
     if not questions:
         raise HTTPException(status_code=400, detail="questions.txt is missing or empty")
 

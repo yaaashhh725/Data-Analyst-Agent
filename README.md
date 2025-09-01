@@ -108,16 +108,20 @@ You can open this file directly in your browser or serve it using any static fil
 **How to use:**
 - Paste your questions in the textarea or upload a file named `questions.txt`.
 - Optionally, upload additional data files (e.g., images, CSVs).
-- Click "Upload" to send your files to the `/upload` endpoint.
+- Click "Execute Task" to send your files to the `/upload` endpoint.
 - The result will be displayed below the form.
 
 ---
 
 ## Frontend
 
-The frontend allows you to interact with the `/upload` endpoint and upload files required for analysis.
+A minimal frontend lives in `frontend/index.html`. It lets you:
+- Provide the analytical instructions (converted to `questions.txt` client-side).
+- Upload optional supporting files (datasets, images, PDFs).
+- Execute the workflow and view the JSON result.
+- Call helper/debug endpoints.
 
-### **Expected Structure for `questions.txt`**
+### Expected Structure for `questions.txt`
 
 Your `questions.txt` should clearly describe the analytical task and the questions to be answered.  
 **Example:**
@@ -157,6 +161,32 @@ The agent can consume and produce:
   - `final_output.json` plus any referenced generated artifacts (e.g., plot image data URIs)
 
 > Ensure large binary assets are minimized to stay within serverless limits.
+
+
+### Run the Frontend Locally
+
+You have three simple options:
+
+**Option A: Open the file directly**
+- Start the backend (`uvicorn main:app --reload --port 8000`).
+- Double-click `frontend/index.html` to open it in your browser.
+- The script defaults to `API_BASE_URL = http://localhost:8000` so it will work.
+- Note: Some browsers block file:// to http:// requests with strict settings—if so, use Option B.
+
+**Option B: Serve the frontend with a tiny static server**
+```bash
+# From repo root (or inside frontend/)
+cd frontend
+python -m http.server 5173
+# Now open http://localhost:5173 in your browser
+```
+If you serve it on another port, update the constant in `index.html`:
+```js
+const API_BASE_URL = 'http://localhost:8000';
+```
+(Or replace it with `const API_BASE_URL = window.location.origin.replace(':5173', ':8000');` to auto-map.)
+
+
 
 ---
 
